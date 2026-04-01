@@ -28,8 +28,9 @@ const topbarTitle   = document.getElementById('topbar-title');
 const lastUpdateEl  = document.getElementById('last-update');
 const statusDot     = document.getElementById('status-dot');
 const statusTxt     = document.getElementById('status-txt');
-const btnRefresh    = document.getElementById('btn-refresh');
-const btnLogout     = document.getElementById('btn-logout');
+const btnRefresh      = document.getElementById('btn-refresh');
+const btnClearFilters = document.getElementById('btn-clear-filters');
+const btnLogout       = document.getElementById('btn-logout');
 const fDesde        = document.getElementById('f-desde');
 const fHasta        = document.getElementById('f-hasta');
 const fAbogado      = document.getElementById('f-abogado');
@@ -73,7 +74,6 @@ function navigate(sectionId) {
 // ── Render sección activa ─────────────────────────────────────────────────────
 function renderActiveSection() {
   const rows = applyFilters(allRows, filters);
-  // Limpia contenedores de gráficas antes de re-renderizar
   document.querySelectorAll('.chart-box').forEach(el => { el.innerHTML = ''; });
 
   requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -83,7 +83,13 @@ function renderActiveSection() {
       case 's-montos':       return renderMontos(computeMontos(rows));
       case 's-abogados':     return renderAbogados(computeAbogados(rows));
       case 's-ciudades':     return renderCiudades(computeCiudades(rows));
-      case 's-procesos':     return renderProcesos(computeProcesos(rows));
+      case 's-procesos': {
+        // KPIs y ciudad usan filas filtradas; scheduledByMonth usa allRows (sin filtro)
+        const filtered   = computeProcesos(rows);
+        const unfiltered = computeProcesos(allRows);
+        filtered.scheduledByMonth = unfiltered.scheduledByMonth;
+        return renderProcesos(filtered);
+      }
     }
   }));
 }
@@ -208,6 +214,16 @@ btnLogout.addEventListener('click', () => {
 });
 
 btnRefresh.addEventListener('click', loadData);
+
+btnClearFilters.addEventListener('click', () => {
+  filters.desde = null; filters.hasta = null;
+  filters.ciudades = []; filters.abogado = '';
+  fDesde.value = ''; fHasta.value = '';
+  fAbogado.value = '';
+  msCiudadPanel.querySelectorAll('input').forEach(cb => { cb.checked = true; });
+  syncCityFilter();
+  renderActiveSection();
+});
 
 navItems.forEach(n => n.addEventListener('click', () => navigate(n.dataset.section)));
 

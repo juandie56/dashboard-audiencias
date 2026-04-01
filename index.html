@@ -101,6 +101,7 @@
 
         <div class="topbar-right">
           <span class="last-update-label">Act. <strong id="last-update">—</strong></span>
+          <button id="btn-clear-filters" class="btn-ghost" title="Borrar todos los filtros">✕ Filtros</button>
           <button id="btn-refresh" class="btn-icon" title="Actualizar datos">↻</button>
           <button id="btn-logout" class="btn-ghost">Salir</button>
         </div>
@@ -316,6 +317,7 @@
     </div><!-- /main-area -->
   </div><!-- /app -->
 
+  <div id="chart-tooltip" class="chart-tooltip" hidden></div>
   <script src="assets/vendor/msal-browser.min.js"></script>
   <script type="module" src="assets/js/main.js"></script>
 </body>

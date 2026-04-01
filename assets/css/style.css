@@ -365,6 +365,23 @@ td.num   { text-align: right; font-variant-numeric: tabular-nums; }
 td.muted { color: var(--muted); }
 td.serif { font-family: 'DM Serif Display', serif; font-size: 1rem; }
 
+/* ── Tooltip ──────────────────────────────────────────────────────────────── */
+.chart-tooltip {
+  position: fixed;
+  background: var(--surface2);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.76rem;
+  color: var(--text);
+  line-height: 1.5;
+  pointer-events: none;
+  z-index: 1000;
+  white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+.chart-tooltip strong { color: var(--accent); font-weight: 500; }
+
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 1100px) {
   :root { --sidebar-w: 52px; }

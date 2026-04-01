@@ -204,12 +204,16 @@ export function computeResumen(rows) {
   const sinMonto    = rows.filter(r => r.monto === 0).length;
   const tasa        = celebradas > 0 ? (conciliadas / celebradas * 100) : 0;
 
+  const todayMonth   = isoMonth(new Date());
   const monthEntries = buildMonthMap(rows);
   const monthlyBars  = monthEntries.map(([k, v]) => ({ label: k, count: v.total, year: v.year }));
-  const monthlyRate  = monthEntries.map(([k, v]) => ({
-    label: k,
-    rate: v.celebradas > 0 ? (v.conciliadas / v.celebradas * 100) : 0,
-  }));
+  // Solo meses ya ocurridos (≤ mes actual)
+  const monthlyRate  = monthEntries
+    .filter(([k]) => k <= todayMonth)
+    .map(([k, v]) => ({
+      label: k,
+      rate: v.celebradas > 0 ? (v.conciliadas / v.celebradas * 100) : 0,
+    }));
 
   return {
     KPIs: { total: rows.length, tasa, totalConc, sinMonto },
@@ -223,19 +227,22 @@ export function computeConciliacion(rows) {
   const celebradas  = rows.filter(r => r.celebrada  === true).length;
   const conciliadas = rows.filter(r => r.conciliada === true).length;
   const noConc      = celebradas - conciliadas;
+
+  const todayMonth   = isoMonth(new Date());
   const monthEntries = buildMonthMap(rows);
   const racha = mejorRacha(monthEntries);
 
-  const monthlyBars = monthEntries.map(([k, v]) => ({
-    label: k,
-    rate: v.celebradas > 0 ? (v.conciliadas / v.celebradas * 100) : 0,
-    celebradas: v.celebradas,
-    conciliadas: v.conciliadas,
-  }));
+  // Solo meses ya ocurridos — misma lógica que Resumen
+  const monthlyRate = monthEntries
+    .filter(([k]) => k <= todayMonth)
+    .map(([k, v]) => ({
+      label: k,
+      rate: v.celebradas > 0 ? (v.conciliadas / v.celebradas * 100) : 0,
+    }));
 
   return {
     KPIs: { celebradas, conciliadas, noConc, racha },
-    monthlyBars,
+    monthlyRate,
   };
 }
 

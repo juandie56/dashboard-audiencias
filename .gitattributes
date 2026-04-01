@@ -1,0 +1,13 @@
+# Normaliza saltos de línea al hacer commit (LF en el repo, CRLF en Windows)
+* text=auto
+
+# Fuerza LF en archivos de código
+*.html  text eol=lf
+*.css   text eol=lf
+*.js    text eol=lf
+*.json  text eol=lf
+
+# Binarios: no tocar
+*.png   binary
+*.jpg   binary
+*.ico   binary

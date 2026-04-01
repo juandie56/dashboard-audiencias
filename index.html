@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Audiencias – Valor de Conciliación</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <header>
+    <div>
+      <h1>Audiencias · <em>Valor de Conciliación</em></h1>
+      <p>Hoja "Audiencias" · Gerencia de Litigios</p>
+    </div>
+    <div class="badge">Actualizado Mar 2026</div>
+  </header>
+
+  <!-- KPIs -->
+  <section class="kpi-grid" aria-label="Indicadores clave">
+    <article class="kpi gold">
+      <div class="kpi-label">Total Audiencias</div>
+      <div class="kpi-value" id="kpi-total">—</div>
+      <div class="kpi-sub">Registros en la hoja</div>
+    </article>
+    <article class="kpi green">
+      <div class="kpi-label">Con Monto Registrado</div>
+      <div class="kpi-value" id="kpi-conMonto">—</div>
+      <div class="kpi-sub">Valor de conciliación capturado</div>
+    </article>
+    <article class="kpi blue">
+      <div class="kpi-label">Clasificadas por Rango</div>
+      <div class="kpi-value" id="kpi-clasificadas">—</div>
+      <div class="kpi-sub">Dentro de los rangos definidos</div>
+    </article>
+    <article class="kpi red">
+      <div class="kpi-label">Sin Monto Registrado</div>
+      <div class="kpi-value" id="kpi-sinMonto">—</div>
+      <div class="kpi-sub">Pendiente de captura</div>
+    </article>
+  </section>
+
+  <!-- Gráficas principales -->
+  <section class="main-grid" aria-label="Gráficas de distribución">
+    <div class="card">
+      <div class="card-title">Audiencias por Rango de Valor de Conciliación</div>
+      <div class="bar-chart" id="bars" role="img" aria-label="Gráfica de barras por rango"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Distribución Proporcional</div>
+      <div class="donut-wrap">
+        <svg class="donut" width="200" height="200" viewBox="0 0 200 200"
+             id="donutSvg" role="img" aria-label="Gráfica de dona por rango"></svg>
+        <div class="donut-legend" id="donutLegend"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Detalle inferior -->
+  <section class="bottom-grid" aria-label="Detalle por rango y ciudad">
+    <div class="card">
+      <div class="card-title">Detalle por Rango</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Valor de Conciliación</th>
+            <th>Ganancias</th>
+            <th class="num">Audiencias</th>
+            <th class="num">% del total</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Audiencias por Ciudad</div>
+      <div class="city-list" id="cityList" role="list"></div>
+    </div>
+  </section>
+
+  <footer>
+    Dashboard generado a partir de la hoja "Audiencias" ·
+    Columna <strong>Monto</strong> como Valor de Conciliación ·
+    Audiencias-Gerencia.xlsx
+  </footer>
+
+  <script type="module" src="assets/js/main.js"></script>
+</body>
+</html>

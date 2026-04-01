@@ -1,0 +1,22 @@
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.sublime-workspace
+
+# Dependencias (si se agrega npm en el futuro)
+node_modules/
+package-lock.json
+
+# Variables de entorno y secretos
+.env
+.env.local
+.env.*.local
+
+# Build output (si se agrega un bundler)
+dist/
+build/

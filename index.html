@@ -11,84 +11,118 @@
 </head>
 <body>
 
-  <header>
-    <div>
-      <h1>Audiencias · <em>Valor de Conciliación</em></h1>
-      <p>Hoja "Audiencias" · Gerencia de Litigios</p>
+  <!-- ── Pantalla de login ────────────────────────────────────────────────── -->
+  <div id="login-overlay" class="login-overlay">
+    <div class="login-card">
+      <div class="login-logo">QP</div>
+      <h2>Dashboard Audiencias</h2>
+      <p>Gerencia de Litigios · QP Alliance</p>
+      <button id="btn-login" class="btn-primary">
+        Iniciar sesión con Microsoft
+      </button>
+      <span class="login-hint">Usa tu cuenta @qpalliance.co</span>
     </div>
-    <div class="badge">Actualizado Mar 2026</div>
-  </header>
+  </div>
 
-  <!-- KPIs -->
-  <section class="kpi-grid" aria-label="Indicadores clave">
-    <article class="kpi gold">
-      <div class="kpi-label">Total Audiencias</div>
-      <div class="kpi-value" id="kpi-total">—</div>
-      <div class="kpi-sub">Registros en la hoja</div>
-    </article>
-    <article class="kpi green">
-      <div class="kpi-label">Con Monto Registrado</div>
-      <div class="kpi-value" id="kpi-conMonto">—</div>
-      <div class="kpi-sub">Valor de conciliación capturado</div>
-    </article>
-    <article class="kpi blue">
-      <div class="kpi-label">Clasificadas por Rango</div>
-      <div class="kpi-value" id="kpi-clasificadas">—</div>
-      <div class="kpi-sub">Dentro de los rangos definidos</div>
-    </article>
-    <article class="kpi red">
-      <div class="kpi-label">Sin Monto Registrado</div>
-      <div class="kpi-value" id="kpi-sinMonto">—</div>
-      <div class="kpi-sub">Pendiente de captura</div>
-    </article>
-  </section>
+  <!-- ── Overlay de carga ─────────────────────────────────────────────────── -->
+  <div id="loading-overlay" class="loading-overlay" hidden>
+    <div class="spinner"></div>
+    <span>Cargando datos…</span>
+  </div>
 
-  <!-- Gráficas principales -->
-  <section class="main-grid" aria-label="Gráficas de distribución">
-    <div class="card">
-      <div class="card-title">Audiencias por Rango de Valor de Conciliación</div>
-      <div class="bar-chart" id="bars" role="img" aria-label="Gráfica de barras por rango"></div>
-    </div>
+  <!-- ── Dashboard ────────────────────────────────────────────────────────── -->
+  <div id="dashboard" hidden>
 
-    <div class="card">
-      <div class="card-title">Distribución Proporcional</div>
-      <div class="donut-wrap">
-        <svg class="donut" width="200" height="200" viewBox="0 0 200 200"
-             id="donutSvg" role="img" aria-label="Gráfica de dona por rango"></svg>
-        <div class="donut-legend" id="donutLegend"></div>
+    <header>
+      <div>
+        <h1>Audiencias · <em>Valor de Conciliación</em></h1>
+        <p>Hoja "Audiencias" · Gerencia de Litigios</p>
       </div>
-    </div>
-  </section>
+      <div class="header-actions">
+        <span class="last-update-label">
+          Actualizado: <strong id="last-update">—</strong>
+        </span>
+        <button id="btn-refresh" class="btn-icon" title="Actualizar datos">
+          ↻
+        </button>
+        <button id="btn-logout" class="btn-ghost">Cerrar sesión</button>
+      </div>
+    </header>
 
-  <!-- Detalle inferior -->
-  <section class="bottom-grid" aria-label="Detalle por rango y ciudad">
-    <div class="card">
-      <div class="card-title">Detalle por Rango</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Valor de Conciliación</th>
-            <th>Ganancias</th>
-            <th class="num">Audiencias</th>
-            <th class="num">% del total</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-    </div>
+    <!-- KPIs -->
+    <section class="kpi-grid" aria-label="Indicadores clave">
+      <article class="kpi gold">
+        <div class="kpi-label">Total Audiencias</div>
+        <div class="kpi-value" id="kpi-total">—</div>
+        <div class="kpi-sub">Registros en la hoja</div>
+      </article>
+      <article class="kpi green">
+        <div class="kpi-label">Con Monto Registrado</div>
+        <div class="kpi-value" id="kpi-conMonto">—</div>
+        <div class="kpi-sub">Valor de conciliación capturado</div>
+      </article>
+      <article class="kpi blue">
+        <div class="kpi-label">Clasificadas por Rango</div>
+        <div class="kpi-value" id="kpi-clasificadas">—</div>
+        <div class="kpi-sub">Dentro de los rangos definidos</div>
+      </article>
+      <article class="kpi red">
+        <div class="kpi-label">Sin Monto Registrado</div>
+        <div class="kpi-value" id="kpi-sinMonto">—</div>
+        <div class="kpi-sub">Pendiente de captura</div>
+      </article>
+    </section>
 
-    <div class="card">
-      <div class="card-title">Audiencias por Ciudad</div>
-      <div class="city-list" id="cityList" role="list"></div>
-    </div>
-  </section>
+    <!-- Gráficas principales -->
+    <section class="main-grid" aria-label="Gráficas de distribución">
+      <div class="card">
+        <div class="card-title">Audiencias por Rango de Valor de Conciliación</div>
+        <div class="bar-chart" id="bars" role="img" aria-label="Gráfica de barras por rango"></div>
+      </div>
 
-  <footer>
-    Dashboard generado a partir de la hoja "Audiencias" ·
-    Columna <strong>Monto</strong> como Valor de Conciliación ·
-    Audiencias-Gerencia.xlsx
-  </footer>
+      <div class="card">
+        <div class="card-title">Distribución Proporcional</div>
+        <div class="donut-wrap">
+          <svg class="donut" width="200" height="200" viewBox="0 0 200 200"
+               id="donutSvg" role="img" aria-label="Gráfica de dona por rango"></svg>
+          <div class="donut-legend" id="donutLegend"></div>
+        </div>
+      </div>
+    </section>
 
+    <!-- Detalle inferior -->
+    <section class="bottom-grid" aria-label="Detalle por rango y ciudad">
+      <div class="card">
+        <div class="card-title">Detalle por Rango</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Valor de Conciliación</th>
+              <th>Ganancias</th>
+              <th class="num">Audiencias</th>
+              <th class="num">% del total</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Audiencias por Ciudad</div>
+        <div class="city-list" id="cityList" role="list"></div>
+      </div>
+    </section>
+
+    <footer>
+      Dashboard generado a partir de la hoja "Audiencias" ·
+      Columna <strong>Monto</strong> como Valor de Conciliación ·
+      Audiencias-Gerencia.xlsx
+    </footer>
+
+  </div><!-- /dashboard -->
+
+  <!-- MSAL debe cargarse antes del módulo para estar disponible como global -->
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/dist/msal-browser.min.js"></script>
   <script type="module" src="assets/js/main.js"></script>
 </body>
 </html>

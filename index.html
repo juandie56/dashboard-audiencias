@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard Audiencias – Valor de Conciliación</title>
+  <title>Dashboard Audiencias – QP Alliance</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -11,117 +11,311 @@
 </head>
 <body>
 
-  <!-- ── Pantalla de login ────────────────────────────────────────────────── -->
+  <!-- ── Login ────────────────────────────────────────────────────────────── -->
   <div id="login-overlay" class="login-overlay">
     <div class="login-card">
       <div class="login-logo">QP</div>
       <h2>Dashboard Audiencias</h2>
       <p>Gerencia de Litigios · QP Alliance</p>
-      <button id="btn-login" class="btn-primary">
-        Iniciar sesión con Microsoft
-      </button>
+      <button id="btn-login" class="btn-primary">Iniciar sesión con Microsoft</button>
       <span class="login-hint">Usa tu cuenta @qpalliance.co</span>
     </div>
   </div>
 
-  <!-- ── Overlay de carga ─────────────────────────────────────────────────── -->
+  <!-- ── Loading overlay ──────────────────────────────────────────────────── -->
   <div id="loading-overlay" class="loading-overlay" hidden>
     <div class="spinner"></div>
     <span>Cargando datos…</span>
   </div>
 
-  <!-- ── Dashboard ────────────────────────────────────────────────────────── -->
-  <div id="dashboard" hidden>
+  <!-- ── App ──────────────────────────────────────────────────────────────── -->
+  <div id="app" hidden>
 
-    <header>
-      <div>
-        <h1>Audiencias · <em>Valor de Conciliación</em></h1>
-        <p>Hoja "Audiencias" · Gerencia de Litigios</p>
-      </div>
-      <div class="header-actions">
-        <span class="last-update-label">
-          Actualizado: <strong id="last-update">—</strong>
-        </span>
-        <button id="btn-refresh" class="btn-icon" title="Actualizar datos">
-          ↻
-        </button>
-        <button id="btn-logout" class="btn-ghost">Cerrar sesión</button>
-      </div>
-    </header>
-
-    <!-- KPIs -->
-    <section class="kpi-grid" aria-label="Indicadores clave">
-      <article class="kpi gold">
-        <div class="kpi-label">Total Audiencias</div>
-        <div class="kpi-value" id="kpi-total">—</div>
-        <div class="kpi-sub">Registros en la hoja</div>
-      </article>
-      <article class="kpi green">
-        <div class="kpi-label">Con Monto Registrado</div>
-        <div class="kpi-value" id="kpi-conMonto">—</div>
-        <div class="kpi-sub">Valor de conciliación capturado</div>
-      </article>
-      <article class="kpi blue">
-        <div class="kpi-label">Clasificadas por Rango</div>
-        <div class="kpi-value" id="kpi-clasificadas">—</div>
-        <div class="kpi-sub">Dentro de los rangos definidos</div>
-      </article>
-      <article class="kpi red">
-        <div class="kpi-label">Sin Monto Registrado</div>
-        <div class="kpi-value" id="kpi-sinMonto">—</div>
-        <div class="kpi-sub">Pendiente de captura</div>
-      </article>
-    </section>
-
-    <!-- Gráficas principales -->
-    <section class="main-grid" aria-label="Gráficas de distribución">
-      <div class="card">
-        <div class="card-title">Audiencias por Rango de Valor de Conciliación</div>
-        <div class="bar-chart" id="bars" role="img" aria-label="Gráfica de barras por rango"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Distribución Proporcional</div>
-        <div class="donut-wrap">
-          <svg class="donut" width="200" height="200" viewBox="0 0 200 200"
-               id="donutSvg" role="img" aria-label="Gráfica de dona por rango"></svg>
-          <div class="donut-legend" id="donutLegend"></div>
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-brand">
+        <span class="sidebar-logo">QP</span>
+        <div>
+          <div class="sidebar-title">Audiencias</div>
+          <div class="sidebar-sub">Gerencia de Litigios</div>
         </div>
       </div>
-    </section>
 
-    <!-- Detalle inferior -->
-    <section class="bottom-grid" aria-label="Detalle por rango y ciudad">
-      <div class="card">
-        <div class="card-title">Detalle por Rango</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Valor de Conciliación</th>
-              <th>Ganancias</th>
-              <th class="num">Audiencias</th>
-              <th class="num">% del total</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody"></tbody>
-        </table>
+      <nav class="sidebar-nav">
+        <button class="sidebar-nav-item active" data-section="s-resumen">
+          <span class="nav-icon">◈</span> Resumen
+        </button>
+        <button class="sidebar-nav-item" data-section="s-conciliacion">
+          <span class="nav-icon">✓</span> Conciliación
+        </button>
+        <button class="sidebar-nav-item" data-section="s-montos">
+          <span class="nav-icon">$</span> Montos
+        </button>
+        <button class="sidebar-nav-item" data-section="s-abogados">
+          <span class="nav-icon">⊙</span> Abogados
+        </button>
+        <button class="sidebar-nav-item" data-section="s-ciudades">
+          <span class="nav-icon">◎</span> Ciudades
+        </button>
+        <button class="sidebar-nav-item" data-section="s-procesos">
+          <span class="nav-icon">◉</span> Procesos
+        </button>
+      </nav>
+
+      <div class="sidebar-status">
+        <span class="status-dot" id="status-dot"></span>
+        <span class="status-txt" id="status-txt">En vivo</span>
       </div>
+    </aside>
 
-      <div class="card">
-        <div class="card-title">Audiencias por Ciudad</div>
-        <div class="city-list" id="cityList" role="list"></div>
-      </div>
-    </section>
+    <!-- Área principal -->
+    <div id="main-area">
 
-    <footer>
-      Dashboard generado a partir de la hoja "Audiencias" ·
-      Columna <strong>Monto</strong> como Valor de Conciliación ·
-      Audiencias-Gerencia.xlsx
-    </footer>
+      <!-- Topbar -->
+      <header id="topbar">
+        <h2 id="topbar-title">Resumen</h2>
 
-  </div><!-- /dashboard -->
+        <div class="topbar-filters">
+          <label class="filter-group">
+            <span>Desde</span>
+            <input type="date" id="f-desde">
+          </label>
+          <label class="filter-group">
+            <span>Hasta</span>
+            <input type="date" id="f-hasta">
+          </label>
+          <div class="filter-group">
+            <span>Ciudad</span>
+            <div class="ms-wrap">
+              <button id="ms-ciudad-btn" class="ms-btn" type="button">Todas ▾</button>
+              <div id="ms-ciudad-panel" class="ms-panel" hidden></div>
+            </div>
+          </div>
+          <label class="filter-group">
+            <span>Abogado</span>
+            <select id="f-abogado">
+              <option value="">Todos</option>
+            </select>
+          </label>
+        </div>
 
-  <!-- MSAL debe cargarse antes del módulo para estar disponible como global -->
+        <div class="topbar-right">
+          <span class="last-update-label">Act. <strong id="last-update">—</strong></span>
+          <button id="btn-refresh" class="btn-icon" title="Actualizar datos">↻</button>
+          <button id="btn-logout" class="btn-ghost">Salir</button>
+        </div>
+      </header>
+
+      <!-- Contenido -->
+      <main id="content">
+
+        <!-- ── 1. Resumen ──────────────────────────────────────────────── -->
+        <section id="s-resumen" class="dash-section">
+          <div class="kpi-grid">
+            <article class="kpi gold">
+              <div class="kpi-label">Total audiencias</div>
+              <div class="kpi-value" id="kpi-r-total">—</div>
+              <div class="kpi-sub">Registros totales</div>
+            </article>
+            <article class="kpi green">
+              <div class="kpi-label">Tasa de conciliación</div>
+              <div class="kpi-value" id="kpi-r-tasa">—</div>
+              <div class="kpi-sub">Conciliadas / Celebradas</div>
+            </article>
+            <article class="kpi blue">
+              <div class="kpi-label">Total conciliado</div>
+              <div class="kpi-value" id="kpi-r-conc">—</div>
+              <div class="kpi-sub">Suma de montos</div>
+            </article>
+            <article class="kpi red">
+              <div class="kpi-label">Sin monto registrado</div>
+              <div class="kpi-value" id="kpi-r-sin">—</div>
+              <div class="kpi-sub">Pendiente de captura</div>
+            </article>
+          </div>
+          <div class="charts-row">
+            <div class="card chart-card">
+              <div class="card-title">Audiencias por mes</div>
+              <div class="chart-box" id="c-r-bars"></div>
+            </div>
+            <div class="card chart-card">
+              <div class="card-title">Tasa de conciliación mensual · línea 95% de referencia</div>
+              <div class="chart-box" id="c-r-line"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── 2. Conciliación ─────────────────────────────────────────── -->
+        <section id="s-conciliacion" class="dash-section" hidden>
+          <div class="kpi-grid">
+            <article class="kpi gold">
+              <div class="kpi-label">Celebradas</div>
+              <div class="kpi-value" id="kpi-c-celebradas">—</div>
+              <div class="kpi-sub">Audiencias realizadas</div>
+            </article>
+            <article class="kpi green">
+              <div class="kpi-label">Conciliadas</div>
+              <div class="kpi-value" id="kpi-c-conciliadas">—</div>
+              <div class="kpi-sub">Con acuerdo</div>
+            </article>
+            <article class="kpi red">
+              <div class="kpi-label">No conciliadas</div>
+              <div class="kpi-value" id="kpi-c-noconc">—</div>
+              <div class="kpi-sub">Sin acuerdo</div>
+            </article>
+            <article class="kpi blue">
+              <div class="kpi-label">Mejor racha</div>
+              <div class="kpi-value" id="kpi-c-racha">—</div>
+              <div class="kpi-sub">Meses consecutivos al 100%</div>
+            </article>
+          </div>
+          <div class="charts-row single">
+            <div class="card chart-card">
+              <div class="card-title">Tasa mensual de conciliación · verde ≥98% · naranja 95–98% · rojo &lt;95%</div>
+              <div class="chart-box" id="c-con-bars"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── 3. Montos ───────────────────────────────────────────────── -->
+        <section id="s-montos" class="dash-section" hidden>
+          <div class="kpi-grid kpi-grid-3">
+            <article class="kpi gold">
+              <div class="kpi-label">Total conciliado</div>
+              <div class="kpi-value" id="kpi-m-total">—</div>
+              <div class="kpi-sub">Suma de montos conciliados</div>
+            </article>
+            <article class="kpi blue">
+              <div class="kpi-label">Promedio por conciliación</div>
+              <div class="kpi-value" id="kpi-m-prom">—</div>
+              <div class="kpi-sub">Media de montos</div>
+            </article>
+            <article class="kpi green">
+              <div class="kpi-label">Máximo registrado</div>
+              <div class="kpi-value" id="kpi-m-max">—</div>
+              <div class="kpi-sub">Mayor valor individual</div>
+            </article>
+          </div>
+          <div class="charts-row single">
+            <div class="card chart-card">
+              <div class="card-title">Distribución por rango de valor de conciliación</div>
+              <div class="chart-box" id="c-mon-bars"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── 4. Abogados ─────────────────────────────────────────────── -->
+        <section id="s-abogados" class="dash-section" hidden>
+          <div class="kpi-grid">
+            <article class="kpi gold">
+              <div class="kpi-label">Abogados válidos</div>
+              <div class="kpi-value" id="kpi-ab-total">—</div>
+              <div class="kpi-sub">Con audiencias registradas</div>
+            </article>
+            <article class="kpi blue">
+              <div class="kpi-label">Mayor volumen</div>
+              <div class="kpi-value" id="kpi-ab-mayor">—</div>
+              <div class="kpi-sub">Nombre y cantidad</div>
+            </article>
+            <article class="kpi green">
+              <div class="kpi-label">Promedio por abogado</div>
+              <div class="kpi-value" id="kpi-ab-prom">—</div>
+              <div class="kpi-sub">Audiencias / abogado</div>
+            </article>
+            <article class="kpi red">
+              <div class="kpi-label">Sin asignar</div>
+              <div class="kpi-value" id="kpi-ab-sin">—</div>
+              <div class="kpi-sub">Abogado no identificado</div>
+            </article>
+          </div>
+          <div class="charts-row">
+            <div class="card chart-card">
+              <div class="card-title">Audiencias por abogado</div>
+              <div class="chart-box" id="c-ab-bars"></div>
+            </div>
+            <div class="card chart-card">
+              <div class="card-title">Detalle por abogado</div>
+              <div class="chart-box table-scroll" id="c-ab-table"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── 5. Ciudades ─────────────────────────────────────────────── -->
+        <section id="s-ciudades" class="dash-section" hidden>
+          <div class="kpi-grid">
+            <article class="kpi gold">
+              <div class="kpi-label">Total ciudades</div>
+              <div class="kpi-value" id="kpi-ciu-total">—</div>
+              <div class="kpi-sub">Con audiencias registradas</div>
+            </article>
+            <article class="kpi blue">
+              <div class="kpi-label">Principal</div>
+              <div class="kpi-value" id="kpi-ciu-primera">—</div>
+              <div class="kpi-sub">Mayor volumen</div>
+            </article>
+            <article class="kpi green">
+              <div class="kpi-label">Segunda</div>
+              <div class="kpi-value" id="kpi-ciu-segunda">—</div>
+              <div class="kpi-sub">Segundo mayor</div>
+            </article>
+            <article class="kpi" style="--accent-bar: var(--accent2);">
+              <div class="kpi-label">Tercera</div>
+              <div class="kpi-value" id="kpi-ciu-tercera">—</div>
+              <div class="kpi-sub">Tercer mayor</div>
+            </article>
+          </div>
+          <div class="charts-row">
+            <div class="card chart-card">
+              <div class="card-title">Activos vs. cerrados por ciudad</div>
+              <div class="chart-box" id="c-ciu-stacked"></div>
+            </div>
+            <div class="card chart-card">
+              <div class="card-title">Evolución mensual — top 5 ciudades</div>
+              <div class="chart-box" id="c-ciu-lines"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── 6. Procesos activos ─────────────────────────────────────── -->
+        <section id="s-procesos" class="dash-section" hidden>
+          <div class="kpi-grid">
+            <article class="kpi gold">
+              <div class="kpi-label">Procesos activos</div>
+              <div class="kpi-value" id="kpi-p-activos">—</div>
+              <div class="kpi-sub">Proceso activo = Sí</div>
+            </article>
+            <article class="kpi" style="--c: var(--muted);">
+              <div class="kpi-label">Cerrados</div>
+              <div class="kpi-value" id="kpi-p-cerrados">—</div>
+              <div class="kpi-sub">Proceso activo = No</div>
+            </article>
+            <article class="kpi green">
+              <div class="kpi-label">Programadas</div>
+              <div class="kpi-value" id="kpi-p-prog">—</div>
+              <div class="kpi-sub">Activos con fecha futura</div>
+            </article>
+            <article class="kpi red">
+              <div class="kpi-label">Sin programar</div>
+              <div class="kpi-value" id="kpi-p-sinprog">—</div>
+              <div class="kpi-sub">Activos sin fecha</div>
+            </article>
+          </div>
+          <div class="charts-row">
+            <div class="card chart-card">
+              <div class="card-title">Procesos activos por ciudad</div>
+              <div class="chart-box" id="c-pro-city"></div>
+            </div>
+            <div class="card chart-card">
+              <div class="card-title">Audiencias programadas por mes futuro</div>
+              <div class="chart-box" id="c-pro-months"></div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div><!-- /main-area -->
+  </div><!-- /app -->
+
   <script src="assets/vendor/msal-browser.min.js"></script>
   <script type="module" src="assets/js/main.js"></script>
 </body>

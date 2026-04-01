@@ -1,32 +1,61 @@
 /**
- * data.js — Autenticación MSAL + lectura en tiempo real via Microsoft Graph API.
- *
- * Expone los mismos objetos que consumen charts.js y main.js,
- * ahora calculados dinámicamente desde la hoja "Audiencias" en SharePoint.
- *
- * Requiere: msal-browser cargado como global <script> en index.html.
+ * data.js — MSAL + Microsoft Graph API + normalización + cómputo por sección.
  */
 
-// ── Configuración ─────────────────────────────────────────────────────────────
+// ── Configuración MSAL ────────────────────────────────────────────────────────
 const MSAL_CONFIG = {
   auth: {
     clientId:    '6151a3a1-2193-41cb-acbc-483082e2b85c',
     authority:   'https://login.microsoftonline.com/dc60f95d-5f6e-4d2c-a86b-320a2b60144e',
     redirectUri: 'https://juandie56.github.io/dashboard-audiencias',
   },
-  cache: {
-    cacheLocation:          'sessionStorage',
-    storeAuthStateInCookie: false,
-  },
+  cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false },
 };
-
 const SCOPES = ['User.Read', 'Files.Read.All'];
-
 const SHAREPOINT_FILE_URL =
   'https://quinteropalacio-my.sharepoint.com/:x:/g/personal/squintero_qpalliance_co/IQDtJdfGY0zFSJM4MXWHlD2VAVyrIpIwyYC-eQ_x4euQ0Y8';
 
-// ── Rangos de clasificación ───────────────────────────────────────────────────
-const RANGE_DEFS = [
+export const msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
+await msalInstance.initialize();
+await msalInstance.handleRedirectPromise().catch(() => {});
+
+export const getActiveAccount = () => msalInstance.getAllAccounts()[0] ?? null;
+
+export async function login() {
+  await msalInstance.loginPopup({ scopes: SCOPES });
+  return getActiveAccount();
+}
+export function logout() {
+  const a = getActiveAccount();
+  if (a) msalInstance.logoutPopup({ account: a });
+}
+async function getToken() {
+  const account = getActiveAccount();
+  if (!account) throw new Error('Sin sesión activa.');
+  try {
+    return (await msalInstance.acquireTokenSilent({ scopes: SCOPES, account })).accessToken;
+  } catch {
+    return (await msalInstance.acquireTokenPopup({ scopes: SCOPES })).accessToken;
+  }
+}
+function sharingUrlToId(url) {
+  return 'u!' + btoa(url).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+async function graphGet(path, token) {
+  const res = await fetch(`https://graph.microsoft.com/v1.0${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Graph ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+// ── Constantes ────────────────────────────────────────────────────────────────
+export const VALID_ABOGADOS = [
+  'Valentina Guio', 'Jose Rojas', 'Laura Castellanos', 'Alejandra Garzón',
+  'Óscar García', 'Esteban Perea', 'Lorena Chaparro Quintero', 'Angie Rizo',
+];
+
+export const RANGE_DEFS = [
   { rango: '0 – 4M',    ganancias: '0 – 10M',    min: 0,          max: 4_000_000,  cls: 'r0'  },
   { rango: '4M – 6M',   ganancias: '10M – 20M',  min: 4_000_000,  max: 6_000_000,  cls: 'r1'  },
   { rango: '6M – 7M',   ganancias: '20M – 30M',  min: 6_000_000,  max: 7_000_000,  cls: 'r2'  },
@@ -38,139 +67,326 @@ const RANGE_DEFS = [
   { rango: '+20M',      ganancias: '+ 100M',      min: 20_000_000, max: Infinity,   cls: 'r6c' },
 ];
 
-// ── Inicialización MSAL (top-level await — válido en ES modules) ──────────────
-export const msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
-await msalInstance.initialize();
-await msalInstance.handleRedirectPromise().catch(() => {});
+export const MONTHS_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
-export function getActiveAccount() {
-  const accounts = msalInstance.getAllAccounts();
-  return accounts.length > 0 ? accounts[0] : null;
+// ── Normalización ─────────────────────────────────────────────────────────────
+const COL = {
+  CIUDAD: 4, FECHA_AUDIENCIA: 6, MONTO: 8,
+  ABOGADO: 16, CELEBRADA: 22, CONCILIADA: 23, PROCESO_ACTIVO: 25,
+};
+
+function stripAccents(s) {
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
-export async function login() {
-  await msalInstance.loginPopup({ scopes: SCOPES });
-  return getActiveAccount();
+function normalizeBool(val) {
+  const s = stripAccents(String(val ?? '').trim()).toUpperCase();
+  if (['SI', 'S', 'YES', 'Y', '1', 'TRUE'].includes(s)) return true;
+  if (['NO', 'N', '0', 'FALSE'].includes(s)) return false;
+  return null;
 }
 
-export function logout() {
-  const account = getActiveAccount();
-  if (account) msalInstance.logoutPopup({ account });
+function normalizeCity(val) {
+  const s = String(val ?? '').trim();
+  const map = {
+    'Medellin': 'Medellín', 'MEDELLIN': 'Medellín', 'MEDELLÍN': 'Medellín',
+    'Bogota': 'Bogotá', 'BOGOTA': 'Bogotá', 'BOGOTÁ': 'Bogotá',
+  };
+  return map[s] ?? s;
 }
 
-async function getToken() {
-  const account = getActiveAccount();
-  if (!account) throw new Error('No hay sesión activa.');
-  try {
-    const result = await msalInstance.acquireTokenSilent({ scopes: SCOPES, account });
-    return result.accessToken;
-  } catch {
-    const result = await msalInstance.acquireTokenPopup({ scopes: SCOPES });
-    return result.accessToken;
+function normalizeAbogado(val) {
+  const s = stripAccents(String(val ?? '').trim()).toLowerCase();
+  for (const name of VALID_ABOGADOS) {
+    if (stripAccents(name).toLowerCase() === s) return name;
   }
+  return 'Sin asignar';
 }
-
-// ── Microsoft Graph API ───────────────────────────────────────────────────────
-
-/**
- * Convierte una URL de compartir de SharePoint al ID que usa el endpoint
- * /shares de Graph API: "u!" + base64url(url)
- */
-function sharingUrlToId(url) {
-  const b64 = btoa(url).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  return 'u!' + b64;
-}
-
-async function graphGet(path, token) {
-  const res = await fetch(`https://graph.microsoft.com/v1.0${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Graph API ${res.status}: ${body}`);
-  }
-  return res.json();
-}
-
-// ── Columnas (índice 0-based; fila 0 = encabezados) ──────────────────────────
-// 0:#  1:Nombre  2:Juzgado  3:Consecutivo  4:Ciudad  5:Cliente
-// 6:Fecha audiencia  7:Hora  8:Monto  9:Monto cliente  10:Honorarios ...
-const COL_CIUDAD = 4;
-const COL_MONTO  = 8;
 
 function parseAmount(val) {
   if (typeof val === 'number') return val;
-  // Limpia formato moneda colombiano: "$1.500.000" o "1,500,000" → número
-  const clean = String(val ?? '')
-    .replace(/[^0-9,.-]/g, '')
-    .replace(/\./g, '')    // separador de miles en es-CO
-    .replace(',', '.');    // separador decimal
-  return parseFloat(clean) || 0;
+  const c = String(val ?? '').replace(/[^0-9,.-]/g, '').replace(/\./g, '').replace(',', '.');
+  return parseFloat(c) || 0;
 }
 
-// ── Procesamiento de datos ────────────────────────────────────────────────────
-function processRows(rows) {
-  // Fila 0 = encabezados; filtrar filas sin número de registro (#)
-  const data = rows.slice(1).filter(r => r[0] !== null && r[0] !== '' && r[0] !== undefined);
-
-  let conMonto = 0;
-  let sinMonto = 0;
-  const counts = new Array(RANGE_DEFS.length).fill(0);
-  const cities = {};
-
-  for (const row of data) {
-    const monto  = parseAmount(row[COL_MONTO]);
-    const ciudad = String(row[COL_CIUDAD] ?? '').trim();
-
-    if (monto > 0) {
-      conMonto++;
-      const idx = RANGE_DEFS.findIndex(r => monto >= r.min && monto < r.max);
-      if (idx !== -1) counts[idx]++;
-    } else {
-      sinMonto++;
-    }
-
-    if (ciudad) cities[ciudad] = (cities[ciudad] ?? 0) + 1;
+function parseDate(val) {
+  if (!val) return null;
+  if (typeof val === 'number' && val > 1000) {
+    // Excel serial (days since 1899-12-30)
+    const d = new Date(Math.round((val - 25569) * 86400000));
+    return isNaN(d) ? null : d;
   }
+  const d = new Date(val);
+  return isNaN(d) ? null : d;
+}
+
+function isoMonth(date) {
+  if (!date) return null;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// ── Carga y normalización de filas ────────────────────────────────────────────
+export async function loadDashboardData() {
+  const token = await getToken();
+  const shareId = sharingUrlToId(SHAREPOINT_FILE_URL);
+  const item = await graphGet(`/shares/${shareId}/driveItem`, token);
+  const { driveId } = item.parentReference;
+  const range = await graphGet(
+    `/drives/${driveId}/items/${item.id}/workbook/worksheets/Audiencias/usedRange`, token,
+  );
+
+  const rows = range.values.slice(1)
+    .filter(r => r[COL.CIUDAD] !== null && r[COL.CIUDAD] !== '')
+    .map(r => ({
+      ciudad:         normalizeCity(r[COL.CIUDAD]),
+      fechaAudiencia: parseDate(r[COL.FECHA_AUDIENCIA]),
+      monto:          parseAmount(r[COL.MONTO]),
+      abogado:        normalizeAbogado(r[COL.ABOGADO]),
+      celebrada:      normalizeBool(r[COL.CELEBRADA]),
+      conciliada:     normalizeBool(r[COL.CONCILIADA]),
+      procesoActivo:  normalizeBool(r[COL.PROCESO_ACTIVO]),
+    }));
+
+  const allCities = [...new Set(rows.map(r => r.ciudad).filter(Boolean))].sort();
+  return { rows, allCities };
+}
+
+// ── Filtros ───────────────────────────────────────────────────────────────────
+export function applyFilters(rows, { desde, hasta, ciudades, abogado }) {
+  return rows.filter(r => {
+    if (desde && r.fechaAudiencia && r.fechaAudiencia < desde) return false;
+    if (hasta && r.fechaAudiencia && r.fechaAudiencia > hasta)  return false;
+    if (ciudades?.length && !ciudades.includes(r.ciudad))        return false;
+    if (abogado && r.abogado !== abogado)                        return false;
+    return true;
+  });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function buildMonthMap(rows) {
+  const m = {};
+  for (const r of rows) {
+    const k = isoMonth(r.fechaAudiencia);
+    if (!k) continue;
+    if (!m[k]) m[k] = { total: 0, celebradas: 0, conciliadas: 0, year: r.fechaAudiencia.getFullYear() };
+    m[k].total++;
+    if (r.celebrada  === true) m[k].celebradas++;
+    if (r.conciliada === true) m[k].conciliadas++;
+  }
+  return Object.entries(m).sort(([a], [b]) => a.localeCompare(b));
+}
+
+function mejorRacha(monthEntries) {
+  let max = 0, cur = 0;
+  for (const [, v] of monthEntries) {
+    if (v.celebradas > 0 && v.conciliadas === v.celebradas) { cur++; max = Math.max(max, cur); }
+    else cur = 0;
+  }
+  return max;
+}
+
+export const fmtCOP = n => {
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(0)}M`;
+  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
+};
+export const fmtPct = n => `${n.toFixed(1)}%`;
+export const fmtMonth = k => {
+  const [y, mo] = k.split('-');
+  return `${MONTHS_ES[parseInt(mo) - 1]} ${y.slice(2)}`;
+};
+
+// ── Sección 1: Resumen ────────────────────────────────────────────────────────
+export function computeResumen(rows) {
+  const celebradas  = rows.filter(r => r.celebrada  === true).length;
+  const conciliadas = rows.filter(r => r.conciliada === true).length;
+  const totalConc   = rows.reduce((s, r) => s + (r.conciliada ? r.monto : 0), 0);
+  const sinMonto    = rows.filter(r => r.monto === 0).length;
+  const tasa        = celebradas > 0 ? (conciliadas / celebradas * 100) : 0;
+
+  const monthEntries = buildMonthMap(rows);
+  const monthlyBars  = monthEntries.map(([k, v]) => ({ label: k, count: v.total, year: v.year }));
+  const monthlyRate  = monthEntries.map(([k, v]) => ({
+    label: k,
+    rate: v.celebradas > 0 ? (v.conciliadas / v.celebradas * 100) : 0,
+  }));
 
   return {
-    KPIs: {
-      totalAudiencias: data.length,
-      conMonto,
-      clasificadas:    counts.reduce((a, b) => a + b, 0),
-      sinMonto,
-    },
-    rangeData: RANGE_DEFS
-      .map((r, i) => ({ ...r, count: counts[i] }))
-      .filter(r => r.count > 0),
-    cityData: Object.entries(cities)
-      .map(([city, count]) => ({ city, count }))
-      .sort((a, b) => b.count - a.count),
+    KPIs: { total: rows.length, tasa, totalConc, sinMonto },
+    monthlyBars,
+    monthlyRate,
   };
 }
 
-// ── Carga principal (llamada desde main.js) ───────────────────────────────────
-export async function loadDashboardData() {
-  const token   = await getToken();
-  const shareId = sharingUrlToId(SHAREPOINT_FILE_URL);
+// ── Sección 2: Conciliación ───────────────────────────────────────────────────
+export function computeConciliacion(rows) {
+  const celebradas  = rows.filter(r => r.celebrada  === true).length;
+  const conciliadas = rows.filter(r => r.conciliada === true).length;
+  const noConc      = celebradas - conciliadas;
+  const monthEntries = buildMonthMap(rows);
+  const racha = mejorRacha(monthEntries);
 
-  // Resolver URL compartida → driveId + itemId
-  const item    = await graphGet(`/shares/${shareId}/driveItem`, token);
-  const driveId = item.parentReference.driveId;
-  const itemId  = item.id;
+  const monthlyBars = monthEntries.map(([k, v]) => ({
+    label: k,
+    rate: v.celebradas > 0 ? (v.conciliadas / v.celebradas * 100) : 0,
+    celebradas: v.celebradas,
+    conciliadas: v.conciliadas,
+  }));
 
-  // Leer todo el rango usado de la hoja Audiencias
-  const range = await graphGet(
-    `/drives/${driveId}/items/${itemId}/workbook/worksheets/Audiencias/usedRange`,
-    token,
-  );
-
-  return processRows(range.values);
+  return {
+    KPIs: { celebradas, conciliadas, noConc, racha },
+    monthlyBars,
+  };
 }
 
-// ── Export de compatibilidad para charts.js ───────────────────────────────────
-export const DONUT_COLORS = [
-  '#5b8dee', '#3ecf8e', '#c8a96e', '#e08c5c', '#e05c5c',
-  '#a855f7', '#ec4899', '#f59e0b', '#10b981',
-];
+// ── Sección 3: Montos ─────────────────────────────────────────────────────────
+export function computeMontos(rows) {
+  const conMonto = rows.filter(r => r.conciliada === true && r.monto > 0);
+  const total    = conMonto.reduce((s, r) => s + r.monto, 0);
+  const promedio = conMonto.length > 0 ? total / conMonto.length : 0;
+  const maximo   = conMonto.length > 0 ? Math.max(...conMonto.map(r => r.monto)) : 0;
+
+  const counts = new Array(RANGE_DEFS.length).fill(0);
+  for (const r of conMonto) {
+    const idx = RANGE_DEFS.findIndex(rd => r.monto >= rd.min && r.monto < rd.max);
+    if (idx !== -1) counts[idx]++;
+  }
+  const classified = counts.reduce((a, b) => a + b, 0);
+  const rangeData  = RANGE_DEFS.map((rd, i) => ({ ...rd, count: counts[i] })).filter(d => d.count > 0);
+
+  return {
+    KPIs: { total, promedio, maximo },
+    rangeData,
+    classified,
+  };
+}
+
+// ── Sección 4: Abogados ───────────────────────────────────────────────────────
+export function computeAbogados(rows) {
+  const byAb = {};
+  for (const r of rows) {
+    if (!byAb[r.abogado]) byAb[r.abogado] = { total: 0, celebradas: 0, conciliadas: 0 };
+    byAb[r.abogado].total++;
+    if (r.celebrada  === true) byAb[r.abogado].celebradas++;
+    if (r.conciliada === true) byAb[r.abogado].conciliadas++;
+  }
+
+  const sinAsignar = byAb['Sin asignar']?.total ?? 0;
+  const validos = VALID_ABOGADOS.map(name => ({
+    name,
+    total:     byAb[name]?.total      ?? 0,
+    celebradas: byAb[name]?.celebradas ?? 0,
+    conciliadas: byAb[name]?.conciliadas ?? 0,
+  })).filter(d => d.total > 0).sort((a, b) => b.total - a.total);
+
+  const mayor   = validos[0] ?? null;
+  const promedio = validos.length > 0
+    ? validos.reduce((s, d) => s + d.total, 0) / validos.length
+    : 0;
+
+  const barData = [
+    ...validos.map(d => ({ label: d.name.split(' ')[0], value: d.total, color: null })),
+    ...(sinAsignar > 0 ? [{ label: 'Sin asignar', value: sinAsignar, color: '#e05c5c' }] : []),
+  ];
+
+  const tableData = validos.map(d => ({
+    name: d.name,
+    total: d.total,
+    tasa: d.celebradas > 0 ? fmtPct(d.conciliadas / d.celebradas * 100) : '—',
+  }));
+
+  return {
+    KPIs: {
+      totalAbogados: validos.length,
+      mayorVolumen:  mayor ? `${mayor.name.split(' ')[0]} (${mayor.total})` : '—',
+      promedio,
+      sinAsignar,
+    },
+    barData,
+    tableData,
+  };
+}
+
+// ── Sección 5: Ciudades ───────────────────────────────────────────────────────
+export function computeCiudades(rows) {
+  const byCiudad = {};
+  for (const r of rows) {
+    if (!r.ciudad) continue;
+    if (!byCiudad[r.ciudad]) byCiudad[r.ciudad] = { activos: 0, cerrados: 0 };
+    if (r.procesoActivo === true)  byCiudad[r.ciudad].activos++;
+    if (r.procesoActivo === false) byCiudad[r.ciudad].cerrados++;
+  }
+
+  const stackedBars = Object.entries(byCiudad)
+    .map(([city, v]) => ({ city, activos: v.activos, cerrados: v.cerrados, total: v.activos + v.cerrados }))
+    .sort((a, b) => b.total - a.total);
+
+  const top5 = stackedBars.slice(0, 5).map(d => d.city);
+  const monthMap = {};
+  for (const r of rows) {
+    if (!r.fechaAudiencia || !top5.includes(r.ciudad)) continue;
+    const k = isoMonth(r.fechaAudiencia);
+    if (!monthMap[k]) monthMap[k] = {};
+    if (!monthMap[k][r.ciudad]) monthMap[k][r.ciudad] = 0;
+    monthMap[k][r.ciudad]++;
+  }
+  const months = Object.keys(monthMap).sort();
+  const monthlyLines = { months, cities: top5, series: top5.map(c => months.map(m => monthMap[m]?.[c] ?? 0)) };
+
+  const sorted = stackedBars;
+  return {
+    KPIs: {
+      totalCiudades: sorted.length,
+      primera:  sorted[0]?.city ?? '—',
+      segunda:  sorted[1]?.city ?? '—',
+      tercera:  sorted[2]?.city ?? '—',
+    },
+    stackedBars,
+    monthlyLines,
+  };
+}
+
+// ── Sección 6: Procesos activos ───────────────────────────────────────────────
+export function computeProcesos(rows) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  const activos      = rows.filter(r => r.procesoActivo === true).length;
+  const cerrados     = rows.filter(r => r.procesoActivo === false).length;
+  const programadas  = rows.filter(r =>
+    r.procesoActivo === true &&
+    r.fechaAudiencia && r.fechaAudiencia > today &&
+    r.celebrada !== true,
+  ).length;
+  const sinProgramar = rows.filter(r =>
+    r.procesoActivo === true && !r.fechaAudiencia,
+  ).length;
+
+  // Activos por ciudad
+  const byCiudad = {};
+  for (const r of rows.filter(r => r.procesoActivo === true)) {
+    if (!r.ciudad) continue;
+    byCiudad[r.ciudad] = (byCiudad[r.ciudad] ?? 0) + 1;
+  }
+  const activeByCity = Object.entries(byCiudad)
+    .map(([city, count]) => ({ label: city, value: count }))
+    .sort((a, b) => b.value - a.value);
+
+  // Programadas por mes futuro
+  const futureMonths = {};
+  for (const r of rows) {
+    if (r.procesoActivo !== true) continue;
+    if (!r.fechaAudiencia || r.fechaAudiencia <= today) continue;
+    if (r.celebrada === true) continue;
+    const k = isoMonth(r.fechaAudiencia);
+    futureMonths[k] = (futureMonths[k] ?? 0) + 1;
+  }
+  const scheduledByMonth = Object.entries(futureMonths)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, count]) => ({ label: k, count }));
+
+  return {
+    KPIs: { activos, cerrados, programadas, sinProgramar },
+    activeByCity,
+    scheduledByMonth,
+  };
+}

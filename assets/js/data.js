@@ -127,14 +127,25 @@ function isoMonth(date) {
 
 // ── Carga y normalización de filas ────────────────────────────────────────────
 export async function loadDashboardData() {
-  const token   = await getToken();
-  const shareId = sharingUrlToId(SHAREPOINT_FILE_URL);
-  const range   = await graphGet(
-    `/shares/${shareId}/driveItem/workbook/worksheets/Audiencias/usedRange`, token,
-  );
+  const token = await getToken();
 
-  const rows = range.values.slice(1)
-    .filter(r => r[COL.CIUDAD] !== null && r[COL.CIUDAD] !== '')
+  // 1. Obtener driveItem via sharing link
+  const shareId = sharingUrlToId(SHAREPOINT_FILE_URL);
+  const item    = await graphGet(`/shares/${shareId}/driveItem`, token);
+
+  // 2. Descargar el archivo usando la URL de descarga directa
+  const downloadUrl = item['@microsoft.graph.downloadUrl'];
+  const response    = await fetch(downloadUrl);
+  const buffer      = await response.arrayBuffer();
+
+  // 3. Parsear con SheetJS (cargado como global en index.html)
+  const workbook = XLSX.read(buffer, { type: 'array' });
+  const sheet    = workbook.Sheets['Audiencias'];
+  const rawRows  = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+  // 4. Normalizar filas (misma lógica que antes)
+  const rows = rawRows.slice(1)
+    .filter(r => r[COL.CIUDAD] !== null && r[COL.CIUDAD] !== '' && r[COL.CIUDAD] !== undefined)
     .map(r => ({
       ciudad:         normalizeCity(r[COL.CIUDAD]),
       fechaAudiencia: parseDate(r[COL.FECHA_AUDIENCIA]),

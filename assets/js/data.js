@@ -127,12 +127,10 @@ function isoMonth(date) {
 
 // ── Carga y normalización de filas ────────────────────────────────────────────
 export async function loadDashboardData() {
-  const token = await getToken();
+  const token   = await getToken();
   const shareId = sharingUrlToId(SHAREPOINT_FILE_URL);
-  const item = await graphGet(`/shares/${shareId}/driveItem`, token);
-  const { driveId } = item.parentReference;
-  const range = await graphGet(
-    `/drives/${driveId}/items/${item.id}/workbook/worksheets/Audiencias/usedRange`, token,
+  const range   = await graphGet(
+    `/shares/${shareId}/driveItem/workbook/worksheets/Audiencias/usedRange`, token,
   );
 
   const rows = range.values.slice(1)
